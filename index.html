@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastCuba - Premium Money Transfer</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="./js/supabase.js"></script>
+
+    <style>
+        :root {
+            --primary: #ff3b3f;
+            --glass-bg: rgba(255, 255, 255, 0.12);
+            --glass-border: rgba(255, 255, 255, 0.18);
+            --text-main: #ffffff;
+        }
+
+        * { box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        body { 
+            margin: 0; 
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* --- Pantalla de Carga Pro --- */
+        #loader-wrapper {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), 
+                        url('https://wradio.com.mx/resizer/v2/5H7CUKBXCNFO7ESAWOSHMITTJA.jpg?auth=e2ad10b7961f3c681dfe28894636b486aa0b77be3b35f44afcb8f176283666c9&width=760&height=570&quality=70&smart=true');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .loader-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            padding: 40px;
+            border-radius: 24px;
+            border: 1px solid var(--glass-border);
+            text-align: center;
+            max-width: 90%;
+        }
+
+        .ad-slider { height: 50px; overflow: hidden; margin: 20px 0; }
+        .ad-item { font-size: 1.1rem; color: #fff; font-weight: 300; line-height: 50px; animation: slideVertical 6s infinite; }
+
+        @keyframes slideVertical {
+            0%, 20% { transform: translateY(0); }
+            25%, 45% { transform: translateY(-50px); }
+            50%, 70% { transform: translateY(-100px); }
+            75%, 100% { transform: translateY(-150px); }
+        }
+
+        /* --- Header con Imagen --- */
+        header {
+    width: 100%;
+    height: 100vh; /* 100% del alto de la pantalla */
+    
+    background:
+        linear-gradient(rgba(0,0,0,0.4), rgba(15, 12, 41, 1)),
+        url('https://wradio.com.mx/resizer/v2/5H7CUKBXCNFO7ESAWOSHMITTJA.jpg?auth=e2ad10b7961f3c681dfe28894636b486aa0b77be3b35f44afcb8f176283666c9&width=760&height=570&quality=70&smart=true');
+
+    background-size: cover;      /* CLAVE */
+    background-position: center;
+    background-repeat: no-repeat;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+}
+
+        header h1 { font-size: clamp(2.5rem, 8vw, 4rem); margin: 0; font-weight: 800; letter-spacing: -2px; }
+        header p { opacity: 0.8; font-size: 1.2rem; }
+
+        /* --- Botón Flotante Glass --- */
+        .fab {
+            position: fixed;
+            bottom: 30px; right: 30px;
+            width: 70px; height: 70px;
+            background: var(--primary);
+            border-radius: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 30px;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(255, 59, 63, 0.4);
+            z-index: 999;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .fab:hover { transform: scale(1.1) translateY(-5px); }
+
+        /* --- Estilo Glassmorphism para Modales --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            padding: 15px;
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border);
+            width: 100%;
+            max-width: 500px;
+            border-radius: 30px;
+            padding: 35px;
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+            scrollbar-width: thin;
+        }
+
+        /* Responsive Scrollbar */
+        .modal-content::-webkit-scrollbar { width: 6px; }
+        .modal-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
+        .step { display: none; }
+        .step.active { display: block; animation: fadeIn 0.5s ease; }
+
+        .input-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #aaa; }
+        
+        input {
+            width: 100%; padding: 14px; 
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            color: white; font-size: 1rem; transition: 0.3s;
+        }
+        input:focus { outline: none; background: rgba(255,255,255,0.1); border-color: var(--primary); }
+
+        .btn {
+            padding: 16px; border-radius: 15px; border: none; font-weight: 700;
+            cursor: pointer; transition: 0.3s; flex: 1; font-size: 1rem;
+        }
+        .btn-next { background: var(--primary); color: white; }
+        .btn-prev { background: rgba(255,255,255,0.1); color: white; border: 1px solid var(--glass-border); }
+        .btn-cancel { background: rgba(255, 59, 63, 0.1); color: #ff3b3f; border: 1px solid rgba(255, 59, 63, 0.2); }
+
+        .calc-box {
+            background: rgba(255,255,255,0.05);
+            padding: 20px; border-radius: 15px; margin-bottom: 20px;
+            border: 1px dashed var(--glass-border);
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+        /* Ajustes Mobile */
+        @media (max-width: 480px) {
+            .modal-content { padding: 25px; border-radius: 20px; }
+            header h1 { font-size: 2.2rem; }
+            .fab { bottom: 20px; right: 20px; width: 60px; height: 60px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Pantalla de Carga -->
+<div id="loader-wrapper">
+    <div class="loader-card">
+        <h2 style="margin:0; font-weight:800; color:var(--primary); font-size: 2rem;">⚡ FastCuba</h2>
+        <div class="ad-slider">
+            <div class="ad-item">Transferencias seguras de Zelle a Cuba</div>
+            <div class="ad-item">Entrega garantizada en < 2 horas</div>
+            <div class="ad-item">La mejor tasa: <span id="tasa-promo">Cargando...</span> CUP x 1 USD</div>
+            <div class="ad-item">Soporte 24/7 vía WhatsApp</div>
+        </div>
+        <div style="width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+    </div>
+</div>
+
+<header>
+    <h1>FastCuba</h1>
+    <p>Premium Money Solutions</p>
+</header>
+
+<!-- Botón Flotante -->
+<div class="fab" onclick="abrirModal()" title="Nuevo Envío">
+    <span>+</span>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalTransferencia">
+    <div class="modal-content">
+        
+        <form id="form-transaccion">
+            <!-- PASO 1 -->
+            <div class="step active" id="step-1">
+                <h2 style="margin-top:0">Nuevo Envío</h2>
+                <div class="input-group">
+                    <label>Monto a enviar (USD)</label>
+                    <input type="number" id="monto_usd" min="50" placeholder="Min. $50.00" required>
+                </div>
+
+                <div class="calc-box">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                        <span>Beneficiario recibe:</span>
+                        <strong style="color:#2ecc71" id="total_cup">0.00 CUP</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size: 0.85rem; opacity: 0.7;">
+                        <span>Total a pagar (Zelle):</span>
+                        <span id="total_usd">$0.00</span>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Tu Nombre Completo</label>
+                    <input type="text" id="remitente_nombre" required>
+                </div>
+                <div class="input-group">
+                    <label>Tu WhatsApp</label>
+                    <input type="text" id="remitente_whatsapp" required>
+                </div>
+
+                <div class="nav-buttons" style="display:flex; gap:10px;">
+                    <button type="button" class="btn btn-cancel" onclick="cerrarModal()">Cancelar</button>
+                    <button type="button" class="btn btn-next" onclick="nextStep(2)">Continuar</button>
+                </div>
+            </div>
+
+            <!-- PASO 2 -->
+            <div class="step" id="step-2">
+                <h2 style="margin-top:0">Destinatario</h2>
+                <div class="input-group">
+                    <label>Nombre en Cuba</label>
+                    <input type="text" id="beneficiario_nombre" required>
+                </div>
+                <div class="input-group">
+                    <label>Provincia</label>
+                    <input type="text" id="beneficiario_provincia" required>
+                </div>
+                <div class="input-group">
+                    <label>WhatsApp Destinatario</label>
+                    <input type="text" id="beneficiario_whatsapp">
+                </div>
+                <div class="nav-buttons" style="display:flex; gap:10px;">
+                    <button type="button" class="btn btn-prev" onclick="nextStep(1)">Atrás</button>
+                    <button type="button" class="btn btn-next" onclick="nextStep(3)">Siguiente</button>
+                </div>
+            </div>
+
+            <!-- PASO 3 -->
+            <div class="step" id="step-3">
+                <h2 style="margin-top:0">Comprobante</h2>
+                <p style="font-size:0.9rem; opacity:0.8;">Sube la captura de pantalla de tu transferencia Zelle para validar.</p>
+                <div class="input-group">
+                    <input type="file" id="comprobante" accept="image/*" style="padding:10px;" required>
+                </div>
+                <div class="nav-buttons" style="display:flex; gap:10px;">
+                    <button type="button" class="btn btn-prev" onclick="nextStep(2)">Atrás</button>
+                    <button type="submit" id="btn-enviar" class="btn btn-next">Finalizar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="./js/index.js"></script>
+<style> @keyframes spin { 100% { transform: rotate(360deg); } } </style>
+</body>
+</html>

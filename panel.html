@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastCuba - Panel Administrativo</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="./js/supabase.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #f4f7f6; color: #333; }
+        header { background: #ff3b3f; color: white; padding: 20px; text-align: center; font-size: 1.6rem; font-weight: bold; }
+        main { padding: 20px; max-width: 1100px; margin: auto; text-align: center; }
+        
+        /* Dashboard */
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; transition: 0.3s; border-top: 5px solid #ff3b3f; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.2); }
+        .card h3 { margin: 0 0 10px; }
+
+        /* Modales */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); overflow-y: auto; }
+        .modal-content { background: white; margin: 5% auto; padding: 30px; border-radius: 15px; width: 90%; max-width: 1100px; position: relative; }
+        .close { position: absolute; right: 20px; top: 15px; font-size: 28px; font-weight: bold; cursor: pointer; }
+
+        /* Tablas */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9rem; }
+        th, td { padding: 12px; border: 1px solid #ddd; text-align: center; }
+        th { background: #f8f8f8; }
+        .fila-pendiente { background-color: #fff4e5 !important; border-left: 5px solid #ff9800; }
+        
+        /* Badges y Botones */
+        .badge { padding: 4px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; }
+        .badge-pendiente { background: #ffe0b2; color: #e65100; }
+        .badge-confirmado { background: #c8e6c9; color: #2e7d32; }
+        .btn-view { background: #007bff; color: white; text-decoration: none; padding: 5px 10px; border-radius: 4px; }
+        .confirm { background: #28a745; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; }
+        .reject { background: #dc3545; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; }
+
+        /* Métricas */
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; }
+        .metric-card { background: #f8f9fa; padding: 20px; border-radius: 10px; border: 1px solid #eee; text-align: center; }
+        .metric-card h4 { margin: 0; color: #666; font-size: 0.8rem; text-transform: uppercase; }
+        .metric-card p { margin: 10px 0 0; font-size: 1.4rem; font-weight: bold; color: #ff3b3f; }
+    </style>
+</head>
+<body>
+
+<header>FastCuba - Panel Administrativo</header>
+
+<main>
+    <!-- Tasa de Cambio Rápida -->
+    <section class="card" style="max-width: 400px; margin: 0 auto 30px; cursor: default;">
+        <h3>Tasa de Cambio</h3>
+        <input type="number" id="tasa_cambio" step="0.1" style="padding:8px; width:80px;"> CUP
+        <button onclick="actualizarTasa()" style="background:#ff3b3f; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">Actualizar</button>
+    </section>
+
+    <div class="dashboard">
+        <div class="card" onclick="abrirModal('modal-transacciones')">
+            <h3>💸 Transacciones</h3>
+            <p>Gestionar envíos y beneficiarios</p>
+        </div>
+        <div class="card" onclick="abrirModal('modal-metricas')">
+            <h3>📊 Métricas Hoy</h3>
+            <p>Ganancias y totales diarios</p>
+        </div>
+        <div class="card" onclick="abrirModal('modal-comisiones')">
+            <h3>⚙️ Comisiones</h3>
+            <p>Configurar tramos de cobro</p>
+        </div>
+    </div>
+</main>
+
+<!-- MODAL TRANSACCIONES -->
+<div id="modal-transacciones" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="cerrarModal('modal-transacciones')">&times;</span>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>Gestión de Transacciones</h2>
+            <strong id="update-timer" style="color: #ff3b3f;">Actualizando en: 15s</strong>
+        </div>
+        <div style="overflow-x: auto;">
+                <table id="tabla-transacciones">
+                    <thead>
+    <tr>
+        <th>Remitente</th>
+        <th>Beneficiario (Provincia)</th>
+        <th>WhatsApp Ben.</th>
+        <th>Monto (USD)</th>
+        <th>Recibe (CUP)</th>
+        <th>Recibo</th>
+        <th>Estado</th>
+        <th>Acción</th>
+    </tr>
+</thead>
+                    <tbody></tbody>
+                </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL MÉTRICAS -->
+<div id="modal-metricas" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="cerrarModal('modal-metricas')">&times;</span>
+        <h2>Resumen de Operaciones (Hoy)</h2>
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <h4>Transacciones Confirmadas</h4>
+                <p id="m-cantidad">0</p>
+            </div>
+            <div class="metric-card">
+                <h4>Total USD Recibido</h4>
+                <p id="m-usd-recibido">$0.00</p>
+            </div>
+            <div class="metric-card">
+                <h4>Comisiones (Ganancia)</h4>
+                <p id="m-comisiones">$0.00</p>
+            </div>
+            <div class="metric-card" style="background: #fff5f5;">
+                <h4>Total CUP Entregados</h4>
+                <p id="m-cup-entregado">0.00</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL COMISIONES -->
+<!-- MODAL COMISIONES -->
+<div id="modal-comisiones" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
+        <span class="close" onclick="cerrarModal('modal-comisiones')">&times;</span>
+        <h2>Tramos de Comisión</h2>
+        <table id="tabla-comisiones">
+            <thead>
+                <tr>
+                    <th>Mínimo (USD)</th>
+                    <th>Máximo (USD)</th>
+                    <th>Comisión (USD)</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody id="cuerpo-comisiones"></tbody>
+            <tbody id="cuerpo-comisiones">
+                <!-- Aquí se cargarán los datos -->
+            </tbody>
+        </table>
+        <br>
+        <button onclick="agregarFilaComision()" style="background:#007bff; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer;">+ Agregar Nuevo Tramo</button>
+    </div>
+</div>
+
+<script src="./js/panel.js"></script>
+</body>
+</html>
