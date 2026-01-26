@@ -193,7 +193,7 @@
             display: none;
             justify-content: center;
             align-items: center;
-            z-index: 2000;
+            z-index: 1000;
             padding: 15px;
             opacity: 0;
             transition: opacity 0.3s ease;
@@ -225,6 +225,11 @@
         .step.active { display: block; animation: fadeIn 0.5s ease; }
 
         .input-group { margin-bottom: 22px; }
+
+        .swal2-container {
+    z-index: 10000 !important;
+}
+
         label { 
             display: block; 
             margin-bottom: 8px; 
@@ -338,14 +343,39 @@
     <span>+</span>
 </div>
 
+<!-- ... (resto del código anterior igual) ... -->
+
 <!-- Modal -->
 <div class="modal-overlay" id="modalTransferencia">
     <div class="modal-content">
         
         <form id="form-transaccion">
-            <!-- PASO 1 -->
-            <div class="step active" id="step-1">
-                <h2 style="margin-top:0; font-weight: 700;">Nuevo Envío</h2>
+            <!-- PASO 0: Información de Pago (NUEVO) -->
+            <div class="step active" id="step-0">
+                <h2 style="margin-top:0; font-weight: 700;">Información de Pago</h2>
+                <p style="font-size:0.9rem; color: var(--text-secondary); line-height: 1.4;">
+                    Para procesar tu envío, primero debes realizar la transferencia por Zelle a la siguiente cuenta. Copia el dato y procede con el pago.
+                </p>
+                
+                <div class="calc-box" style="text-align: center; border: 1px dashed var(--primary);">
+                    <label>Cuenta Zelle Oficial</label>
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px;">
+                        <span id="zelle-account" style="font-size: 1.2rem; font-weight: 800; color: white;">pago@fastcuba.com</span>
+                        <button type="button" onclick="copiarZelle()" style="background: var(--primary); border: none; border-radius: 8px; color: white; padding: 5px 10px; cursor: pointer; font-size: 0.8rem;">
+                            Copiar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="nav-buttons" style="display:flex; gap:10px; margin-top: 30px;">
+                    <button type="button" class="btn btn-cancel" onclick="cerrarModal()">Cerrar</button>
+                    <button type="button" class="btn btn-next" onclick="nextStep(1)">Ya pagué, continuar</button>
+                </div>
+            </div>
+
+            <!-- PASO 1: Datos del Remitente y Monto -->
+            <div class="step" id="step-1">
+                <h2 style="margin-top:0; font-weight: 700;">Monto y Remitente</h2>
                 <div class="input-group">
                     <label for="monto_usd">Monto a enviar (USD)</label>
                     <input type="number" id="monto_usd" min="50" placeholder="Mínimo $50.00" required>
@@ -358,31 +388,31 @@
                     </div>
                     <hr style="border: none; height: 1px; background: var(--glass-border); margin: 10px 0;">
                     <div style="display:flex; justify-content:space-between; align-items: center; font-size: 0.9rem; opacity: 0.9;">
-                        <span>Total a pagar (Zelle):</span>
+                        <span>Total pagado (Zelle):</span>
                         <span id="total_usd" style="font-weight: 600;">$0.00</span>
                     </div>
                 </div>
 
                 <div class="input-group">
                     <label for="remitente_nombre">Tu Nombre Completo</label>
-                    <input type="text" id="remitente_nombre" required>
+                    <input type="text" id="remitente_nombre" placeholder="Ej: Juan Pérez" required>
                 </div>
                 <div class="input-group">
                     <label for="remitente_whatsapp">Tu WhatsApp</label>
-                    <input type="text" id="remitente_whatsapp" required>
+                    <input type="text" id="remitente_whatsapp" placeholder="Ej: +1 123..." required>
                 </div>
 
                 <div class="nav-buttons" style="display:flex; gap:10px; margin-top: 30px;">
-                    <button type="button" class="btn btn-cancel" onclick="cerrarModal()">Cancelar</button>
+                    <button type="button" class="btn btn-prev" onclick="nextStep(0)">Atrás</button>
                     <button type="button" class="btn btn-next" onclick="nextStep(2)">Continuar</button>
                 </div>
             </div>
 
-            <!-- PASO 2 -->
+            <!-- PASO 2: Datos del Beneficiario -->
             <div class="step" id="step-2">
                 <h2 style="margin-top:0; font-weight: 700;">Datos del Destinatario</h2>
                 <div class="input-group">
-                    <label for="beneficiario_nombre">Nombre del </label>
+                    <label for="beneficiario_nombre">Nombre del Beneficiario</label>
                     <input type="text" id="beneficiario_nombre" required>
                 </div>
                 <div class="input-group">
@@ -399,10 +429,10 @@
                 </div>
             </div>
 
-            <!-- PASO 3 -->
+            <!-- PASO 3: Comprobante -->
             <div class="step" id="step-3">
                 <h2 style="margin-top:0; font-weight: 700;">Comprobante de Pago</h2>
-                <p style="font-size:0.9rem; opacity:0.8; line-height: 1.5;">Sube una captura de pantalla de tu transferencia Zelle para validar la transacción.</p>
+                <p style="font-size:0.9rem; opacity:0.8; line-height: 1.5;">Sube una captura de pantalla de tu transferencia Zelle.</p>
                 <div class="input-group" style="margin-top: 25px;">
                     <label for="comprobante">Archivo de Imagen</label>
                     <input type="file" id="comprobante" accept="image/*" required>
@@ -415,6 +445,7 @@
         </form>
     </div>
 </div>
+
 
 <script src="./js/index.js"></script>
 
