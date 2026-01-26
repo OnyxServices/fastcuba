@@ -118,9 +118,13 @@ function nextStep(step) {
 }
 
 function abrirModal() {
+    // Ocultar la notificación al hacer clic
+    const notification = document.getElementById('fab-notification');
+    if(notification) notification.style.display = 'none';
+
     const modal = document.getElementById('modalTransferencia');
     modal.style.display = 'flex';
-    modal.setAttribute('aria-hidden', 'false'); // Decimos que ahora es visible
+    modal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
     nextStep(0);
 }

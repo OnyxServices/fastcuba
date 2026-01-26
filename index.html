@@ -119,19 +119,24 @@
 
         /* --- Header con Superposición de Gradiente --- */
         header {
-            width: 100%;
-            height: 100vh;
-            background:
-                linear-gradient(to top, var(--dark-bg) 5%, transparent 50%),
-                url('https://wradio.com.mx/resizer/v2/5H7CUKBXCNFO7ESAWOSHMITTJA.jpg?auth=e2ad10b7961f3c681dfe28894636b486aa0b77be3b35f44afcb8f176283666c9&width=760&height=570&quality=70&smart=true') no-repeat center center;
-            background-size: cover;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 20px;
-        }
+    width: 100%;
+    height: 100vh;
+    background:
+        linear-gradient(
+            to top,
+            rgba(0, 0, 0, 0.75) 5%,   /* ← opacidad aquí */
+            rgba(0, 0, 0, 0.75) 50%
+        ),
+        url('https://wradio.com.mx/resizer/v2/5H7CUKBXCNFO7ESAWOSHMITTJA.jpg?auth=e2ad10b7961f3c681dfe28894636b486aa0b77be3b35f44afcb8f176283666c9&width=760&height=570&quality=70&smart=true')
+        no-repeat center center;
+    background-size: cover;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+}
 
         header h1 {
             font-size: clamp(3rem, 10vw, 5rem); 
@@ -145,7 +150,7 @@
 }
         header p { 
             /*--opacity: 0.50;*/ 
-            font-size: 2.5rem;
+            font-size: 1 rem;
              text-shadow: 
                     0 6px 15px rgba(0,0,0,0.85), /* sombra fuerte – CAMBIO */
                     0 14px 45px rgba(0,0,0,0.65), /* profundidad extra – CAMBIO */
@@ -314,6 +319,51 @@
             header h1 { font-size: 2.5rem; }
             .fab { bottom: 20px; right: 20px; width: 60px; height: 60px; }
         }
+
+        /* Estilos para la burbuja de notificación */
+.fab-badge-notification {
+    position: absolute;
+    right: 80px; /* Distancia a la izquierda del botón */
+    bottom: 10px;
+    background: white;
+    color: var(--dark-bg);
+    padding: 12px 18px;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    pointer-events: none; /* Para que no interfiera con el click en el botón */
+    animation: floatingBubble 3s infinite ease-in-out;
+    border: 1px solid var(--primary);
+}
+
+/* Flechita del bocadillo */
+.fab-badge-notification::after {
+    content: '';
+    position: absolute;
+    right: -10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-left: 10px solid white;
+}
+
+/* Animación de entrada y balanceo */
+@keyframes floatingBubble {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-10px); }
+}
+
+/* Ajuste para móviles: ocultar si la pantalla es muy pequeña o moverla */
+@media (max-width: 480px) {
+    .fab-badge-notification {
+        font-size: 0.75rem;
+        padding: 8px 12px;
+        right: 70px;
+    }
+}
     </style>
 </head>
 <body>
@@ -338,12 +388,15 @@
     <p>Envia dinero a tus familiares en Cuba de la forma mas rapida.</p>    
 </header>
 
-<!-- Botón Flotante -->
-<div class="fab" onclick="abrirModal()" title="Nuevo Envío">
+<!-- Botón Flotante con Burbuja -->
+<div class="fab" id="main-fab" onclick="abrirModal()" title="Nuevo Envío">
+    <!-- Nueva burbuja de notificación -->
+    <div class="fab-badge-notification" id="fab-notification">
+        Presiona aquí para iniciar tu transacción
+    </div>
     <span>+</span>
 </div>
 
-<!-- ... (resto del código anterior igual) ... -->
 
 <!-- Modal -->
 <div class="modal-overlay" id="modalTransferencia">
