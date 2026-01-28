@@ -245,15 +245,6 @@ function nextStep(step) {
     }
 }
 
-function iniciarConMonto() {
-    const monto = parseFloat(document.getElementById('home-monto-usd')?.value) || 0;
-    if(monto < 50){
-        Swal.fire({ icon: 'warning', title: 'Monto mínimo', text: 'El envío mínimo es de $50 USD', background: '#1e2332', color: '#fff' });
-        return;
-    }
-    abrirModal();
-    nextStep(1);
-}
 
 function copiarZelle() {
     const texto = document.getElementById('zelle-account')?.innerText;
@@ -414,7 +405,6 @@ async function procesarEnvioFinal() {
             throw new Error("Error al guardar datos: " + insertError.message);
         }
 
-        // 7. Éxito total
         // 7. Éxito total
         await Swal.fire({
             icon: 'success',

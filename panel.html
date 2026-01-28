@@ -91,12 +91,14 @@
     </div>
 
     <div class="table-container">
+        <!-- Busca esta parte en tu panel.html -->
         <table id="tabla-transacciones">
             <thead>
                 <tr>
                     <th>Remitente</th>
+                    <th>WhatsApp Rem.</th> <!-- 1. Nueva columna añadida -->
                     <th>Beneficiario</th>
-                    <th>WhatsApp</th>
+                    <th>WhatsApp Ben.</th>
                     <th>USD</th>
                     <th>CUP</th>
                     <th>Recibo</th>
@@ -105,7 +107,7 @@
                 </tr>
             </thead>
             <tbody></tbody>
-        </table>
+</table>
     </div>
 
     <!-- CONTROLES DE PAGINACIÓN -->
@@ -117,16 +119,51 @@
 </div>
 </div>
 
-<!-- Modal Métricas -->
+<!-- Modal Métricas Actualizado -->
 <div id="modal-metricas" class="modal">
     <div class="modal-content" style="max-width: 800px;">
         <span class="close" onclick="cerrarModal('modal-metricas')">&times;</span>
         <h2>Resumen Operativo (Hoy)</h2>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
-            <div class="card"><h4>Cant.</h4><p id="m-cantidad">0</p></div>
-            <div class="card"><h4>USD Total</h4><p id="m-usd-recibido">$0.00</p></div>
-            <div class="card"><h4>Ganancia</h4><p id="m-comisiones" style="color:var(--success)">$0.00</p></div>
-            <div class="card"><h4>CUP Total</h4><p id="m-cup-entregado">0 CUP</p></div>
+        
+        <!-- Tablero de Métricas -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px;">
+            <div class="card">
+                <h4>Entrada Bruta (USD)</h4>
+                <p id="m-entrada-bruta" style="font-weight: bold;">$0.00</p>
+                <small style="color:var(--text-muted)">Total recibido del cliente</small>
+            </div>
+            <div class="card" style="border-left: 4px solid var(--danger);">
+                <h4>Costo Operativo</h4>
+                <p id="m-costo-total" style="color:var(--danger)">$0.00</p>
+                <small style="color:var(--text-muted)">Pago a logística en Cuba</small>
+            </div>
+            <div class="card" style="border-left: 4px solid var(--success);">
+                <h4>Utilidad Real</h4>
+                <p id="m-utilidad-neta" style="color:var(--success); font-size: 1.5rem; font-weight: 800;">$0.00</p>
+                <small style="color:var(--text-muted)">Ganancia neta final</small>
+            </div>
+        </div>
+
+        <!-- Ajustes de Cálculo (Inputs interactivos) -->
+        <div style="background: var(--bg); padding: 15px; border-radius: 10px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+            <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 5px;">Costo por envío (USD fijo):</label>
+                <input type="number" id="cfg-costo-fijo" value="1.00" step="0.5" oninput="calcularUtilidadReal()" style="width: 100px; padding: 5px; border-radius: 5px; border: 1px solid var(--border);">
+            </div>
+            <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 5px;">Comisión Pagador (%):</label>
+                <input type="number" id="cfg-costo-porcentaje" value="1.0" step="0.1" oninput="calcularUtilidadReal()" style="width: 100px; padding: 5px; border-radius: 5px; border: 1px solid var(--border);">
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-muted); max-width: 250px;">
+                * El costo operativo se calcula sumando el costo fijo por cada transacción más el porcentaje sobre el monto enviado.
+            </p>
+        </div>
+
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--border);">
+        
+        <div style="display: flex; justify-content: space-between;">
+            <p>Transacciones confirmadas hoy: <b id="m-cantidad">0</b></p>
+            <p>CUP entregado: <b id="m-cup-entregado">0 CUP</b></p>
         </div>
     </div>
 </div>

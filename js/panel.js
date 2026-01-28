@@ -1,5 +1,14 @@
+// panel.js - Al puro inicio
 const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2500 });
-let segundosParaRefresco = 15;
+
+// NUEVA VARIABLE GLOBAL PARA MÉTRICAS
+let datosMetricasHoy = {
+    totalUSD: 0,
+    totalComisiones: 0,
+    totalCUP: 0,
+    cantidad: 0
+};
+
 let configId = 1;
 
 // --- NAVEGACIÓN ---
@@ -139,22 +148,72 @@ async function eliminarComision(id) {
 }
 
 // --- MÉTRICAS ---
-async function cargarMetricas() {
-    const hoy = new Date(); hoy.setHours(0,0,0,0);
-    const { data: txs } = await supabaseClient.from('transacciones').select('monto_usd, comision_usd, tasa_cambio').eq('estado', 'confirmado').gte('fecha_creacion', hoy.toISOString());
 
-    if (!txs) return;
-    let usd = 0, com = 0, cup = 0;
+async function cargarMetricas() {
+    const hoy = new Date(); 
+    hoy.setHours(0,0,0,0);
+    
+    // Traemos solo transacciones confirmadas de hoy
+    const { data: txs, error } = await supabaseClient
+        .from('transacciones')
+        .select('monto_usd, comision_usd, tasa_cambio')
+        .eq('estado', 'confirmado')
+        .gte('fecha_creacion', hoy.toISOString());
+
+    if (error || !txs) return;
+
+    // 1. Reiniciamos los datos en la variable global
+    datosMetricasHoy = { 
+        totalUSD: 0, 
+        totalComisiones: 0, 
+        totalCUP: 0, 
+        cantidad: txs.length 
+    };
+
+    // 2. Sumamos los valores
     txs.forEach(tx => {
-        usd += parseFloat(tx.monto_usd) || 0;
-        com += parseFloat(tx.comision_usd) || 0;
-        cup += (parseFloat(tx.monto_usd) || 0) * (parseFloat(tx.tasa_cambio) || 0);
+        const monto = parseFloat(tx.monto_usd) || 0;
+        const comision = parseFloat(tx.comision_usd) || 0;
+        const tasa = parseFloat(tx.tasa_cambio) || 0;
+
+        datosMetricasHoy.totalUSD += monto;
+        datosMetricasHoy.totalComisiones += comision;
+        datosMetricasHoy.totalCUP += (monto * tasa);
     });
 
-    document.getElementById('m-cantidad').innerText = txs.length;
-    document.getElementById('m-usd-recibido').innerText = `$${usd.toFixed(2)}`;
-    document.getElementById('m-comisiones').innerText = `$${com.toFixed(2)}`;
-    document.getElementById('m-cup-entregado').innerText = cup.toLocaleString('es-CU') + " CUP";
+    // 3. Actualizamos los textos básicos en el Modal
+    document.getElementById('m-cantidad').innerText = datosMetricasHoy.cantidad;
+    
+    // Mostramos la Entrada Bruta (Lo que el cliente pagó en total: Monto + Comisión)
+    const entradaBruta = datosMetricasHoy.totalUSD + datosMetricasHoy.totalComisiones;
+    document.getElementById('m-entrada-bruta').innerText = `$${entradaBruta.toFixed(2)}`;
+    
+    document.getElementById('m-cup-entregado').innerText = datosMetricasHoy.totalCUP.toLocaleString('es-CU') + " CUP";
+
+    // 4. Llamamos a la calculadora para que haga el resto de los números
+    calcularUtilidadReal();
+}
+
+// Función auxiliar para la calculadora interactiva
+function calcularUtilidadReal() {
+    // Leemos los valores de los cuadritos de configuración (los inputs que pusimos en el HTML)
+    const costoFijoPorTransaccion = parseFloat(document.getElementById('cfg-costo-fijo').value) || 0;
+    const porcentajePagador = parseFloat(document.getElementById('cfg-costo-porcentaje').value) || 0;
+
+    // Cálculo de Gastos: (TXs x Costo Fijo) + (Monto USD x % del pagador)
+    const gastoFijoTotal = datosMetricasHoy.cantidad * costoFijoPorTransaccion;
+    const gastoVariableTotal = datosMetricasHoy.totalUSD * (porcentajePagador / 100);
+    const costoOperativoTotal = gastoFijoTotal + gastoVariableTotal;
+
+    // Utilidad Neta = Lo que cobraste de comisión menos lo que gastaste operando
+    const utilidadNeta = datosMetricasHoy.totalComisiones - costoOperativoTotal;
+
+    // Pintamos los resultados en el modal
+    document.getElementById('m-costo-total').innerText = `-$${costoOperativoTotal.toFixed(2)}`;
+    document.getElementById('m-utilidad-neta').innerText = `$${utilidadNeta.toFixed(2)}`;
+    
+    // Si da negativo, se pone rojo; si es positivo, verde
+    document.getElementById('m-utilidad-neta').style.color = utilidadNeta < 0 ? 'var(--danger)' : 'var(--success)';
 }
 
 // --- CONCILIACIÓN ---
@@ -326,10 +385,11 @@ function cambiarPagina(delta) {
 }
 
 async function cargarTransacciones() {
+    // 1. Obtener la tasa de cambio actual para los cálculos
     const { data: config } = await supabaseClient.from('config').select('tasa_cambio').single();
-    const tasa = config?.tasa_cambio || 0;
+    const tasaGlobal = config?.tasa_cambio || 0;
 
-    // --- CONSTRUCCIÓN DE LA QUERY CON FILTROS ---
+    // 2. Construcción de la Query con Filtros
     let query = supabaseClient
         .from('transacciones')
         .select('*', { count: 'exact' });
@@ -352,7 +412,7 @@ async function cargarTransacciones() {
     if (inicio) query = query.gte('fecha_creacion', inicio);
     if (fin) query = query.lte('fecha_creacion', fin + 'T23:59:59');
 
-    // Paginación
+    // 3. Paginación
     const desde = paginaActual * itemsPorPagina;
     const hasta = desde + itemsPorPagina - 1;
     
@@ -360,36 +420,64 @@ async function cargarTransacciones() {
         .order('fecha_creacion', { ascending: false })
         .range(desde, hasta);
 
-    if (error) return;
+    if (error) {
+        console.error("Error cargando transacciones:", error);
+        return;
+    }
 
-    // Actualizar Info de Paginación
+    // 4. Actualizar Info de Paginación en la UI
     document.getElementById('page-info').innerText = `Página ${paginaActual + 1} de ${Math.ceil(count / itemsPorPagina) || 1}`;
     document.getElementById('btn-prev').disabled = paginaActual === 0;
-    document.getElementById('btn-next').disabled = hasta >= count - 1;
+    document.getElementById('btn-next').disabled = hasta >= (count - 1);
 
-    // Renderizar Tabla (mantén tu lógica de renderizado anterior pero con las mejoras ya hechas)
+    // 5. Renderizar la Tabla
     const tbody = document.querySelector("#tabla-transacciones tbody");
     tbody.innerHTML = txs.map(tx => {
-        const cup = (tx.monto_usd * (tx.tasa_cambio || tasa)).toLocaleString('es-CU');
-        const waLink = tx.beneficiario_whatsapp ? tx.beneficiario_whatsapp.replace(/\D/g, '') : '';
+        // Cálculo de CUP (usando la tasa guardada en la transacción o la global)
+        const tasaTx = tx.tasa_cambio || tasaGlobal;
+        const cup = (tx.monto_usd * tasaTx).toLocaleString('es-CU');
+
+        // --- WHATSAPP REMITENTE (MENSAJE PERSONALIZADO) ---
+        const numRemitente = tx.remitente_whatsapp ? tx.remitente_whatsapp.replace(/\D/g, '') : '';
+        const msgRemitente = encodeURIComponent(`Hola ${tx.remitente_nombre}, su transferencia de ${tx.monto_usd} USD ya fue confirmada con éxito. Gracias por confiar en FastCuba.`);
+        const linkRemitente = numRemitente ? `https://wa.me/${numRemitente}?text=${msgRemitente}` : '#';
+
+        // --- WHATSAPP BENEFICIARIO ---
+        const numBeneficiario = tx.beneficiario_whatsapp ? tx.beneficiario_whatsapp.replace(/\D/g, '') : '';
+        const linkBeneficiario = numBeneficiario ? `https://wa.me/${numBeneficiario}` : '#';
         
         return `
             <tr class="${tx.estado === 'pendiente' ? 'fila-pendiente' : ''}">
                 <td>${tx.remitente_nombre}</td>
-                <td><b>${tx.beneficiario_nombre}</b><br><small>${tx.beneficiario_provincia}</small></td>
+                
+                <!-- Celda del Remitente con Link Azul -->
                 <td>
-                    <a href="https://wa.me/${waLink}" target="_blank" style="text-decoration:none; color:#25D366; font-weight:bold;">
-                        📱 ${tx.beneficiario_whatsapp || '-'}
-                    </a>
+                    ${numRemitente ? `
+                        <a href="${linkRemitente}" target="_blank" style="text-decoration:none; color:#3b82f6; font-weight:bold; display:flex; align-items:center; gap:5px;">
+                            <span style="font-size:1.1rem;">📱</span> ${tx.remitente_whatsapp}
+                        </a>
+                    ` : '<span style="color:var(--text-muted)">-</span>'}
                 </td>
+
+                <td><b>${tx.beneficiario_nombre}</b><br><small>${tx.beneficiario_provincia}</small></td>
+                
+                <!-- Celda del Beneficiario con Link Verde -->
+                <td>
+                    ${numBeneficiario ? `
+                        <a href="${linkBeneficiario}" target="_blank" style="text-decoration:none; color:#10b981; font-weight:bold; display:flex; align-items:center; gap:5px;">
+                            <span style="font-size:1.1rem;">📱</span> ${tx.beneficiario_whatsapp}
+                        </a>
+                    ` : '<span style="color:var(--text-muted)">-</span>'}
+                </td>
+
                 <td>$${tx.monto_usd}</td>
                 <td style="color:green; font-weight:bold">${cup} CUP</td>
                 <td><button onclick="verRecibo('${tx.comprobante_url}')" class="btn-ver">👁️ Ver</button></td>
                 <td><span class="badge badge-${tx.estado}">${tx.estado.toUpperCase()}</span></td>
                 <td>
                     ${tx.estado === 'pendiente' ? `
-                        <button onclick="cambiarEstado(${tx.id}, 'confirmado')">✅</button>
-                        <button onclick="cambiarEstado(${tx.id}, 'rechazado')">❌</button>
+                        <button onclick="cambiarEstado(${tx.id}, 'confirmado')" title="Confirmar">✅</button>
+                        <button onclick="cambiarEstado(${tx.id}, 'rechazado')" title="Rechazar">❌</button>
                     ` : '---'}
                 </td>
             </tr>
